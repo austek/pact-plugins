@@ -3,13 +3,15 @@ package getter
 import (
 	"context"
 	"fmt"
-	"golang.org/x/oauth2"
-	"google.golang.org/api/option"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -19,10 +21,26 @@ import (
 // a GCS bucket.
 type GCSGetter struct {
 	getter
+
+	// Timeout sets a deadline which all GCS operations should
+	// complete within. Zero value means no timeout.
+	Timeout time.Duration
+
+	// FileSizeLimit limits the size of an single
+	// decompressed file.
+	//
+	// The zero value means no limit.
+	FileSizeLimit int64
 }
 
 func (g *GCSGetter) ClientMode(u *url.URL) (ClientMode, error) {
 	ctx := g.Context()
+
+	if g.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, g.Timeout)
+		defer cancel()
+	}
 
 	// Parse URL
 	bucket, object, _, err := g.parseURL(u)
@@ -60,6 +78,12 @@ func (g *GCSGetter) ClientMode(u *url.URL) (ClientMode, error) {
 
 func (g *GCSGetter) Get(dst string, u *url.URL) error {
 	ctx := g.Context()
+
+	if g.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, g.Timeout)
+		defer cancel()
+	}
 
 	// Parse URL
 	bucket, object, _, err := g.parseURL(u)
@@ -120,6 +144,12 @@ func (g *GCSGetter) Get(dst string, u *url.URL) error {
 func (g *GCSGetter) GetFile(dst string, u *url.URL) error {
 	ctx := g.Context()
 
+	if g.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, g.Timeout)
+		defer cancel()
+	}
+
 	// Parse URL
 	bucket, object, fragment, err := g.parseURL(u)
 	if err != nil {
@@ -155,7 +185,8 @@ func (g *GCSGetter) getObject(ctx context.Context, client *storage.Client, dst, 
 		return err
 	}
 
-	return copyReader(dst, rc, 0666, g.client.umask())
+	// There is no limit set for the size of an object from GCS
+	return copyReader(dst, rc, 0666, g.client.umask(), 0)
 }
 
 func (g *GCSGetter) parseURL(u *url.URL) (bucket, path, fragment string, err error) {
