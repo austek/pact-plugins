@@ -90,7 +90,7 @@ tasks.register('javadocJar', Jar) {
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(11))
-        implementation.set(JvmImplementation.J9)
+        vendor.set(JvmVendorSpec.ADOPTIUM)
     }
     withJavadocJar()
     withSourcesJar()
