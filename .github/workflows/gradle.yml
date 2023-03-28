@@ -16,6 +16,11 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 17
+      - name: java version
+        run: java -version
+      - name: javaToolchains
+        run: ./gradlew -s --no-daemon -i javaToolchains
+        working-directory: drivers/jvm
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
